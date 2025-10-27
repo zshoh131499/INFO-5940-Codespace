@@ -90,3 +90,29 @@ You will receive an individual API Key for class assignments. To prevent acciden
 
 ## Troubleshooting
 - The Jupyter extension should install automatically. If you still cannot select a Python kernel on Jupyter Notebook: Go to the left sidebar >> **Extensions** >> search for **Jupyter** >> reload window (or reinstall it).   
+
+
+## Project Implementation: Toby's File Q&A with OpenAI
+
+## Overview
+This Streamlit app extends the base INFO 5940 setup by allowing users to upload `.txt`, `.md`, and `.pdf` files and ask questions about their contents.  
+It uses **LangChain**, **ChromaDB**, and **OpenAI GPT-4o** through the Cornell API proxy.
+
+# Features
+
+- Supports uploading `.txt`, `.md`, and `.pdf` files (multiple at once).  
+- Lets users ask questions about the uploaded documents using GPT-4o.  
+- Splits large files into smaller text chunks for accurate retrieval.  
+- Stores embeddings locally with Chroma for fast document search.  
+- Keeps conversation history using Streamlit session state.
+
+# Changes I Made
+
+* Added PDF Support: 
+  Used PyPDF to read and extract text from .pdf files.
+
+* **Used Local Vector Storage**:  
+  Saved document embeddings in a local `.chroma` folder for efficient retrieval.
+
+# How to Run
+In terminal : API_KEY = "your_actual_API_KEY" streamlit run chat_with_pdf.py
