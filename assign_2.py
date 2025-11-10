@@ -19,12 +19,13 @@ from typing import Callable, Dict, List, Optional, Any
 import streamlit as st
 from dotenv import load_dotenv
 from tavily import TavilyClient
+from pathlib import Path 
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Environment & Globals
 # ──────────────────────────────────────────────────────────────────────────────
-
-load_dotenv()  # Loads variables from a local .env if present
+load_dotenv(dotenv_path=str(Path(__file__).with_name(".env")), override=False)
+  # Loads variables from a local .env if present
 os.environ.setdefault("OPENAI_LOG", "error")
 os.environ.setdefault("OPENAI_TRACING", "false")
 
@@ -125,10 +126,59 @@ def internet_search(query: str) -> str:
 
 # BEGIN SOLUTION
 REVIEWER_INSTRUCTIONS = """
+You are the Reviewer Agent. Your job is to VALIDATE and IMPROVE the Planner's itinerary.
+Rules:
+- You MUST use the `internet_search` tool for fact checking (opening hours/closure days, ticket price ranges, inter-city travel times, feasibility).
+- Be concise and practical.
+- If something is uncertain, state “uncertain” and provide alternative suggestions
+- Never invent exact prices or promises (“open at 9:00 today”). Use typical ranges
+
+Workflow:
+1) Validation Checks — list 5–8 concrete checks you’ll perform.
+2) Run Checks — call `internet_search` with targeted queries; extract just the key facts.
+3) List — propose specific fixes in this format:
+   - Day X — Before → After (Reason: <short snippet from search>)
+4) Revised Itinerary — produce the full cleaned day-by-day plan reflecting all deltas list. Keep the Planner’s tone and structure but fix errors.
+5) Notes & Risks — call out any remaining uncertainties.
 
 """
 
 PLANNER_INSTRUCTIONS = """
+You are the Planner Agent. Do not use the internet or any tools.
+Expand the user's trip prompt into a clear, budget-aware day by day itinerary.
+
+Assumptions (state explicitly if missing)
+- Season and average weather; currency (USD with local currency notes if relevant).
+- Pace: ~8-10 active hours/day with 2 meal + 1 rest stop minimum.
+- Transport priority order: train/metro/walk before taxi/flight unless distance dictates.
+
+Requirements:
+- Start with Assumptions (season if missing, traveler profile, currency; keep them reasonable).
+- Provide **City/Route Plan** (city clusters and order; justify pacing).
+
+Special Event suggestions 
+- Propose 1–2 Special Events that are typical for the season (e.g., “major summer fireworks evening”).
+- Mark them as optional. Include: typical month/week window and a rough cost range.
+- If a candidate is selected or strongly aligns with the season, anchor one day around it and label that block Special Event .
+- Clearly state that the Reviewer will fact-check names/dates/tickets and may swap events.
+
+- For each day include:
+  - City and neighborhoods
+  - Morning / Noon / Evening /Nightlife activities with approx. times
+  - Specific well-known sights/venues and typical durations
+  - Local transport between stops with rough travel times
+  - If today includes a candidate event, add a Special Event subsection with timing
+
+  Budget math specification
+- For each day, provide a subtotal range; at the end, sum to a Trip Total (range).
+- If the user's budget is exceeded, propose a cheaper variant (swap, pass, free museums day).
+
+Style & limits
+- Present as Markdown with sections: Assumptions, Route Plan, Day by Day, Budget Summary.
+- Avoid real-time claims (“usually ~09:00–17:00”, not “open today at 9:00”).
+- Keep it compact (≈400–600 words)
+
+
 
 """
 
@@ -136,7 +186,7 @@ reviewer_agent = Agent(
     name="Reviewer Agent",
     model="openai.gpt-4o",
     instructions=REVIEWER_INSTRUCTIONS.strip(),
-    tools=[]
+    tools=[internet_search],
 )
 
 planner_agent = Agent(
